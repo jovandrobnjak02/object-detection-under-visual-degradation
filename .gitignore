@@ -31,6 +31,7 @@ results/*/
 # Dataset (stored locally / on Drive, not in repo)
 data/
 bdd100k/
+data_prepared/
 *.zip
 *.tar
 *.tar.gz

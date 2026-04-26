@@ -1,36 +1,32 @@
 # ============================================================
 # Requirements — Object Detection Under Visual Degradation
-# Tested against Google Colab Pro (Python 3.11, CUDA 12.x,
-# NVIDIA A100). Pre-installed Colab packages are marked.
+# Python 3.11, CUDA 12.x (local dev + Google Colab Pro A100)
 # ============================================================
 
 # --- Core detection frameworks ---
-ultralytics==8.4.41         # YOLOv11, YOLOv12, RT-DETR (latest stable Apr 2026)
-rfdetr==1.6.5               # RF-DETR — Roboflow package (requires Python >=3.10)
+ultralytics==8.4.41         # YOLOv11, YOLOv12, RT-DETR
+rfdetr==1.6.5               # RF-DETR (requires Python >=3.10)
 
-# --- Deep learning (pre-installed on Colab ~2.5-2.6; do not hard-pin) ---
-torch>=2.5.0                # Colab pre-installs a compatible build; upgrade only if needed
-torchvision>=0.19.0         # Must match the torch version
+# --- Deep learning (pre-installed on Colab; do not hard-pin) ---
+torch>=2.5.0
+torchvision>=0.19.0
 
 # --- Computer vision ---
 opencv-python==4.13.0.92
 
 # --- Plotting and analysis ---
-matplotlib==3.10.9          # Pre-installed on Colab
+matplotlib==3.10.9
 seaborn==0.13.2
-pandas==2.2.3               # 3.x requires Python >=3.11; 2.2.3 is the stable LTS for 3.10
-numpy==2.0.2                # Colab pre-installs 2.0.2 and silently reverts downgrades
+pandas>=2.2.3               # 3.x works on Python 3.11; 2.2.3 is the minimum
+numpy>=2.0.2                # 2.x required; 2.3.x is fine on Python 3.11
 
 # --- FLOPs and parameter counting ---
-# NOTE: fvcore has not been updated since Dec 2022 (unmaintained).
-# It still works on Colab but has no active support.
+# NOTE: fvcore is unmaintained (last update Dec 2022) but still functional.
 fvcore==0.1.5.post20221221
 
 # --- Hardware monitoring ---
 psutil==7.2.2
-# pynvml is deprecated — nvidia-ml-py is NVIDIA's maintained replacement.
-# Both packages expose an identical `import pynvml` API, so no code changes needed.
-nvidia-ml-py==13.595.45
+nvidia-ml-py==13.595.45     # Replaces deprecated pynvml; same import pynvml API
 
 # --- Utilities ---
 tqdm==4.67.3

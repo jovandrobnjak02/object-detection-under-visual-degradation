@@ -18,13 +18,15 @@ MODEL_COLORS: dict[str, str] = {
     "rtdetr":  "#55A868",
     "rfdetr":  "#C44E52",
 }
-CONDITIONS = ["clear_day", "rainy", "snowy", "night", "overcast"]
+CONDITIONS = ["clear_day", "rainy", "snowy", "night", "overcast", "partly_cloudy", "dawn_dusk"]
 CONDITION_LABELS = {
-    "clear_day": "Clear Day",
-    "rainy":     "Rain",
-    "snowy":     "Snow",
-    "night":     "Night",
-    "overcast":  "Overcast",
+    "clear_day":     "Clear Day",
+    "rainy":         "Rain",
+    "snowy":         "Snow",
+    "night":         "Night",
+    "overcast":      "Overcast",
+    "partly_cloudy": "Partly Cloudy",
+    "dawn_dusk":     "Dawn/Dusk",
 }
 
 
@@ -85,7 +87,7 @@ def plot_degradation_curves(
     Returns:
         Matplotlib Figure.
     """
-    adverse_conditions = ["rainy", "snowy", "night", "overcast"]
+    adverse_conditions = ["rainy", "snowy", "night", "overcast", "partly_cloudy", "dawn_dusk"]
     fig, ax = plt.subplots(figsize=(8, 5))
 
     for model in df["model"].unique():
