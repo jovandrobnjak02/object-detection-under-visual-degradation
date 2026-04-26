@@ -4,12 +4,13 @@ train: clear_day/train/images
 
 val: clear_day/val/images
 
-test_rainy:        rainy/images
-test_snowy:        snowy/images
-test_night:        night/images
-test_overcast:     overcast/images
-test_partly_cloudy: partly_cloudy/images
-test_dawn_dusk:    dawn_dusk/images
+# Each test split isolates a single degradation variable
+test_rainy_day:         rainy_day/images
+test_snowy_day:         snowy_day/images
+test_night_clear:       night_clear/images
+test_overcast_day:      overcast_day/images
+test_partly_cloudy_day: partly_cloudy_day/images
+test_dawn_dusk_clear:   dawn_dusk_clear/images
 
 nc: 10
 

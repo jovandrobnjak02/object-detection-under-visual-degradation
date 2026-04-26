@@ -9,7 +9,7 @@ from typing import Any
 
 
 ModelName = str
-Condition = str  # "clear" | "rain" | "nighttime"
+Condition = str
 
 
 def compute_map(
@@ -32,7 +32,6 @@ def compute_map(
     if isinstance(results, dict):
         return {"map50": float(results["map50"]), "map50_95": float(results["map50_95"])}
 
-    # Ultralytics Results object
     box = results.box
     return {
         "map50": float(box.map50),

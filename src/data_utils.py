@@ -24,12 +24,12 @@ Output layout produced by :func:`create_splits`:
     <output_root>/
       clear_day/train/images/   clear_day/train/labels/
       clear_day/val/images/     clear_day/val/labels/
-      rainy/images/             rainy/labels/
-      snowy/images/             snowy/labels/
-      night/images/             night/labels/
-      overcast/images/          overcast/labels/
-      partly_cloudy/images/     partly_cloudy/labels/
-      dawn_dusk/images/         dawn_dusk/labels/
+      rainy_day/images/         rainy_day/labels/
+      snowy_day/images/         snowy_day/labels/
+      night_clear/images/       night_clear/labels/
+      overcast_day/images/      overcast_day/labels/
+      partly_cloudy_day/images/ partly_cloudy_day/labels/
+      dawn_dusk_clear/images/   dawn_dusk_clear/labels/
 """
 
 from __future__ import annotations
@@ -39,7 +39,6 @@ import shutil
 from pathlib import Path
 from typing import Callable
 
-# Canonical BDD100K detection categories (index = YOLO class id).
 # "lane" and "drivable area" exist in the raw labels but are segmentation
 # tasks — they are excluded here.
 CATEGORIES: dict[str, int] = {
@@ -58,16 +57,15 @@ CLASS_NAMES: list[str] = [k for k, _ in sorted(CATEGORIES.items(), key=lambda x:
 
 IMG_W, IMG_H = 1280, 720
 
-# Condition filter functions keyed by the output split name.
 # All adverse splits are drawn from the val set (test set has no public labels).
 CONDITION_FILTERS: dict[str, Callable[[dict], bool]] = {
-    "clear_day":    lambda a: a.get("weather") == "clear" and a.get("timeofday") == "daytime",
-    "rainy":        lambda a: a.get("weather") == "rainy",
-    "snowy":        lambda a: a.get("weather") == "snowy",
-    "night":        lambda a: a.get("timeofday") == "night",
-    "overcast":     lambda a: a.get("weather") == "overcast",
-    "partly_cloudy": lambda a: a.get("weather") == "partly cloudy",
-    "dawn_dusk":    lambda a: a.get("timeofday") == "dawn/dusk",
+    "clear_day":         lambda a: a.get("weather") == "clear"         and a.get("timeofday") == "daytime",
+    "rainy_day":         lambda a: a.get("weather") == "rainy"         and a.get("timeofday") == "daytime",
+    "snowy_day":         lambda a: a.get("weather") == "snowy"         and a.get("timeofday") == "daytime",
+    "night_clear":       lambda a: a.get("timeofday") == "night"       and a.get("weather") == "clear",
+    "overcast_day":      lambda a: a.get("weather") == "overcast"      and a.get("timeofday") == "daytime",
+    "partly_cloudy_day": lambda a: a.get("weather") == "partly cloudy" and a.get("timeofday") == "daytime",
+    "dawn_dusk_clear":   lambda a: a.get("timeofday") == "dawn/dusk"   and a.get("weather") == "clear",
 }
 
 
@@ -262,14 +260,14 @@ def create_splits(
     Adverse condition splits are drawn from the val set.
 
     Splits produced:
-        clear_day/train  — clear+daytime from train JSON     (~12 k images)
-        clear_day/val    — clear+daytime from val JSON       (~3.5 k images)
-        rainy            — rainy weather from val JSON       (~740 images)
-        snowy            — snowy weather from val JSON       (~770 images)
-        night            — night timeofday from val JSON     (~3.9 k images)
-        overcast         — overcast weather from val JSON    (~1.2 k images)
-        partly_cloudy    — partly cloudy weather from val    (~740 images)
-        dawn_dusk        — dawn/dusk timeofday from val      (~780 images)
+        clear_day/train    — clear+daytime from train JSON        (~12 400 images)
+        clear_day/val      — clear+daytime from val JSON          (~3 500 images)
+        rainy_day          — rainy + daytime from val             (~396 images)
+        snowy_day          — snowy + daytime from val             (~422 images)
+        night_clear        — night + clear weather from val       (~3 274 images)
+        overcast_day       — overcast + daytime from val          (~1 039 images)
+        partly_cloudy_day  — partly cloudy + daytime from val     (~638 images)
+        dawn_dusk_clear    — dawn/dusk + clear weather from val   (~307 images)
 
     Args:
         data_root: Root of the raw BDD100K dataset directory.
@@ -282,15 +280,14 @@ def create_splits(
     val_imgs   = data_root / "100k" / "val"
 
     jobs: list[tuple[Path, Path, str, str]] = [
-        # (label_json, img_dir, output_split_name, condition_key)
         (train_json, train_imgs, "clear_day/train", "clear_day"),
         (val_json,   val_imgs,   "clear_day/val",   "clear_day"),
-        (val_json,   val_imgs,   "rainy",           "rainy"),
-        (val_json,   val_imgs,   "snowy",           "snowy"),
-        (val_json,   val_imgs,   "night",           "night"),
-        (val_json,   val_imgs,   "overcast",        "overcast"),
-        (val_json,   val_imgs,   "partly_cloudy",   "partly_cloudy"),
-        (val_json,   val_imgs,   "dawn_dusk",       "dawn_dusk"),
+        (val_json,   val_imgs,   "rainy_day",         "rainy_day"),
+        (val_json,   val_imgs,   "snowy_day",         "snowy_day"),
+        (val_json,   val_imgs,   "night_clear",       "night_clear"),
+        (val_json,   val_imgs,   "overcast_day",      "overcast_day"),
+        (val_json,   val_imgs,   "partly_cloudy_day", "partly_cloudy_day"),
+        (val_json,   val_imgs,   "dawn_dusk_clear",   "dawn_dusk_clear"),
     ]
 
     for lbl_json, img_dir, split_name, condition_key in jobs:

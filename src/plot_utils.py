@@ -11,22 +11,24 @@ import numpy as np
 import pandas as pd
 import seaborn as sns
 
-# One consistent color per model — used across all figures
 MODEL_COLORS: dict[str, str] = {
     "yolov11": "#4C72B0",
     "yolov12": "#DD8452",
     "rtdetr":  "#55A868",
     "rfdetr":  "#C44E52",
 }
-CONDITIONS = ["clear_day", "rainy", "snowy", "night", "overcast", "partly_cloudy", "dawn_dusk"]
+CONDITIONS = [
+    "clear_day", "rainy_day", "snowy_day", "night_clear",
+    "overcast_day", "partly_cloudy_day", "dawn_dusk_clear",
+]
 CONDITION_LABELS = {
-    "clear_day":     "Clear Day",
-    "rainy":         "Rain",
-    "snowy":         "Snow",
-    "night":         "Night",
-    "overcast":      "Overcast",
-    "partly_cloudy": "Partly Cloudy",
-    "dawn_dusk":     "Dawn/Dusk",
+    "clear_day":         "Clear Day",
+    "rainy_day":         "Rain (day)",
+    "snowy_day":         "Snow (day)",
+    "night_clear":       "Night (clear)",
+    "overcast_day":      "Overcast (day)",
+    "partly_cloudy_day": "Partly Cloudy (day)",
+    "dawn_dusk_clear":   "Dawn/Dusk (clear)",
 }
 
 
@@ -87,7 +89,7 @@ def plot_degradation_curves(
     Returns:
         Matplotlib Figure.
     """
-    adverse_conditions = ["rainy", "snowy", "night", "overcast", "partly_cloudy", "dawn_dusk"]
+    adverse_conditions = ["rainy_day", "snowy_day", "night_clear", "overcast_day", "partly_cloudy_day", "dawn_dusk_clear"]
     fig, ax = plt.subplots(figsize=(8, 5))
 
     for model in df["model"].unique():

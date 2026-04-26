@@ -12,12 +12,12 @@ Output (written next to this script):
       yolo/
         clear_day/train/images/   clear_day/train/labels/   (~12 400 images)
         clear_day/val/images/     clear_day/val/labels/     (~3 500 images)
-        rainy/images/             rainy/labels/             (~740 images)
-        snowy/images/             snowy/labels/             (~770 images)
-        night/images/             night/labels/             (~3 900 images)
-        overcast/images/          overcast/labels/          (~1 200 images)
-        partly_cloudy/images/     partly_cloudy/labels/     (~740 images)
-        dawn_dusk/images/         dawn_dusk/labels/         (~780 images)
+        rainy_day/images/         rainy_day/labels/         (~396 images)
+        snowy_day/images/         snowy_day/labels/         (~422 images)
+        night_clear/images/       night_clear/labels/       (~3 274 images)
+        overcast_day/images/      overcast_day/labels/      (~1 039 images)
+        partly_cloudy_day/images/ partly_cloudy_day/labels/ (~638 images)
+        dawn_dusk_clear/images/   dawn_dusk_clear/labels/   (~307 images)
       coco/
         (same split names as yolo/)
 
@@ -49,4 +49,4 @@ if __name__ == "__main__":
     )
 
     print("\nDone. Verify counts above, then upload data_prepared/ to Google Drive.")
-    print("Expected total: ~24 000 images across 8 splits.")
+    print("Expected total: ~21 500 images across 8 splits.")
