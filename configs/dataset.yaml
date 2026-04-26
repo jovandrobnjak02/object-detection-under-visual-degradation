@@ -1,0 +1,33 @@
+# BDD100K dataset configuration
+# Run src/data_utils.create_splits() before training to produce these paths.
+# All paths are relative to the converted YOLO dataset root.
+
+path: /content/bdd100k_yolo   # Root set by YOLO_DATA_DIR in .env
+
+# Training split (clear + daytime only)
+train: clear_day/train/images
+
+# Validation split (clear + daytime only)
+val: clear_day/val/images
+
+# Test splits — four adverse conditions from the test set
+test_rainy:    rainy/images
+test_snowy:    snowy/images
+test_night:    night/images
+test_overcast: overcast/images
+
+# Number of classes
+nc: 10
+
+# Class names ordered by ID (must match CATEGORIES dict in src/data_utils.py)
+names:
+  0: car
+  1: person
+  2: traffic sign
+  3: traffic light
+  4: truck
+  5: bus
+  6: bike
+  7: rider
+  8: motor
+  9: train

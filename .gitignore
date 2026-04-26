@@ -1,0 +1,58 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.pyo
+*.pyd
+.Python
+*.egg
+*.egg-info/
+dist/
+build/
+.eggs/
+*.so
+.venv/
+venv/
+env/
+.env
+
+# Jupyter
+.ipynb_checkpoints/
+*.ipynb_checkpoints
+
+# Model checkpoints (tracked via DVC or separate storage)
+checkpoints/*/
+!checkpoints/*/.gitkeep
+
+# Evaluation results
+results/*/
+!results/*/.gitkeep
+
+# Dataset (stored locally / on Drive, not in repo)
+data/
+bdd100k/
+*.zip
+*.tar
+*.tar.gz
+
+# IDE
+.vscode/settings.json
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+runs/
+wandb/
+mlruns/
+
+# Compiled / build artifacts
+*.pt
+*.pth
+*.onnx
+*.torchscript

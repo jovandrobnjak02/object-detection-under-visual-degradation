@@ -1,0 +1,36 @@
+# RT-DETR training configuration
+# Uses the Ultralytics API: model = RTDETR("rtdetr-m.pt")
+# RT-DETR is a full transformer detector with no foundation pretraining.
+
+model:
+  variant: rtdetr-m.pt         # Medium variant (~36M params)
+  pretrained: true             # COCO pretrained
+
+dataset:
+  config: configs/dataset.yaml
+
+training:
+  epochs: 100
+  batch: 16
+  imgsz: 640
+  optimizer: AdamW
+  lr0: 0.0001                  # Transformers typically need lower LR than CNNs
+  lrf: 0.01
+  weight_decay: 0.0001
+  warmup_epochs: 5
+  cos_lr: true
+
+augmentation:
+  hsv_h: 0.015
+  hsv_s: 0.7
+  hsv_v: 0.4
+  flipud: 0.0
+  fliplr: 0.5
+  mosaic: 0.0                  # Mosaic often disabled for DETR-family models
+  mixup: 0.0
+
+output:
+  project: checkpoints/rtdetr
+  name: run
+  save_period: 10
+  plots: true

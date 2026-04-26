@@ -1,0 +1,36 @@
+# YOLOv11 training configuration
+# Uses the Ultralytics API: model = YOLO("yolo11m.pt")
+
+model:
+  variant: yolo11m.pt          # Medium variant (~25M params)
+  pretrained: true             # Start from COCO pretrained weights
+
+dataset:
+  config: configs/dataset.yaml
+
+training:
+  epochs: 100
+  batch: 16
+  imgsz: 640
+  optimizer: AdamW
+  lr0: 0.001                   # Initial learning rate
+  lrf: 0.01                    # Final LR = lr0 * lrf
+  momentum: 0.937
+  weight_decay: 0.0005
+  warmup_epochs: 3
+  cos_lr: true                 # Cosine LR schedule
+
+augmentation:
+  hsv_h: 0.015
+  hsv_s: 0.7
+  hsv_v: 0.4
+  flipud: 0.0
+  fliplr: 0.5
+  mosaic: 1.0
+  mixup: 0.0
+
+output:
+  project: checkpoints/yolov11
+  name: run
+  save_period: 10              # Save checkpoint every N epochs
+  plots: true
