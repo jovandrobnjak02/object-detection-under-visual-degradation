@@ -1,9 +1,5 @@
-# YOLOv12 training configuration
-# Uses the Ultralytics API: model = YOLO("yolo12m.pt")
-# YOLOv12 adds area-based attention to the CNN backbone.
-
 model:
-  variant: yolo12m.pt          # Medium variant
+  variant: yolo12m.pt
   pretrained: true
 
 dataset:

@@ -1,30 +1,20 @@
-# RF-DETR training configuration
-# Uses the rfdetr package (NOT Ultralytics): pip install rfdetr
-# RF-DETR uses a DINOv2-pretrained ViT backbone + transformer detection head.
-#
-# Usage:
-#   from rfdetr import RFDETRMedium
-#   model = RFDETRMedium()
-#   model.train(dataset="<coco-format-dir>", epochs=100, batch_size=16, ...)
-
 model:
-  variant: rfdetr_medium       # Medium variant — maps to RFDETRMedium()
-  backbone: dinov2             # DINOv2 ViT-B/14 pretrained backbone
+  variant: rfdetr_medium
+  backbone: dinov2             
   pretrained: true
 
 dataset:
-  # RF-DETR requires COCO JSON format — see src/data_utils.convert_to_coco()
   config: /content/bdd100k_coco
   format: coco
 
 training:
   epochs: 100
   batch_size: 16
-  imgsz: 560                   # RF-DETR default resolution (multiple of 14 for ViT patches)
+  imgsz: 560 
   lr: 0.0001
   weight_decay: 0.0001
   grad_accumulation: 1
-  checkpoint_interval: 10      # Save checkpoint every N epochs
+  checkpoint_interval: 10
 
 output:
   checkpoint_dir: checkpoints/rfdetr
