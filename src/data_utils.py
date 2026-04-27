@@ -57,6 +57,11 @@ CLASS_NAMES: list[str] = [k for k, _ in sorted(CATEGORIES.items(), key=lambda x:
 
 IMG_W, IMG_H = 1280, 720
 
+
+def _build_image_index(images_dir: Path) -> dict[str, Path]:
+    """Return a filename→path mapping, searching recursively."""
+    return {p.name: p for p in images_dir.rglob("*.jpg")}
+
 # All adverse splits are drawn from the val set (test set has no public labels).
 CONDITION_FILTERS: dict[str, Callable[[dict], bool]] = {
     "clear_day":         lambda a: a.get("weather") == "clear"         and a.get("timeofday") == "daytime",
@@ -135,14 +140,15 @@ def convert_to_yolo(
     with open(labels_json) as f:
         entries: list[dict] = json.load(f)
 
+    img_index = _build_image_index(images_dir)
     count = 0
     for entry in entries:
         if not filter_fn(entry.get("attributes", {})):
             continue
 
         name: str = entry["name"]
-        src_img = images_dir / name
-        if not src_img.exists():
+        src_img = img_index.get(name)
+        if src_img is None:
             continue
 
         lines = _entry_to_yolo_lines(entry)
@@ -193,14 +199,15 @@ def convert_to_coco(
     with open(labels_json) as f:
         entries: list[dict] = json.load(f)
 
+    img_index = _build_image_index(images_dir)
     img_id = ann_id = count = 0
     for entry in entries:
         if not filter_fn(entry.get("attributes", {})):
             continue
 
         name: str = entry["name"]
-        src_img = images_dir / name
-        if not src_img.exists():
+        src_img = img_index.get(name)
+        if src_img is None:
             continue
 
         dst_img_path = dst_dir / name
