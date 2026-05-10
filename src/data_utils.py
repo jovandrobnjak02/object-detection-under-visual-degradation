@@ -24,18 +24,14 @@ Output layout produced by :func:`create_splits`:
     <output_root>/
       clear_day/train/images/   clear_day/train/labels/
       clear_day/val/images/     clear_day/val/labels/
-      rainy_day/images/         rainy_day/labels/
-      snowy_day/images/         snowy_day/labels/
-      night_clear/images/       night_clear/labels/
-      overcast_day/images/      overcast_day/labels/
-      partly_cloudy_day/images/ partly_cloudy_day/labels/
-      dawn_dusk_clear/images/   dawn_dusk_clear/labels/
+      <weather>_<timeofday>/images/   <weather>_<timeofday>/labels/   (one per discovered combo)
 """
 
 from __future__ import annotations
 
 import json
 import shutil
+from collections import Counter
 from pathlib import Path
 from typing import Callable
 
@@ -57,21 +53,81 @@ CLASS_NAMES: list[str] = [k for k, _ in sorted(CATEGORIES.items(), key=lambda x:
 
 IMG_W, IMG_H = 1280, 720
 
+# Minimum images required for a split to be included.
+MIN_SPLIT_SIZE = 50
+
+
+def _split_name(weather: str, timeofday: str) -> str:
+    w = weather.replace(" ", "_").replace("/", "_")
+    t = timeofday.replace(" ", "_").replace("/", "_")
+    return f"{w}_{t}"
+
+
+def _make_filter(weather: str, timeofday: str) -> Callable[[dict], bool]:
+    return lambda a, w=weather, t=timeofday: a.get("weather") == w and a.get("timeofday") == t
+
 
 def _build_image_index(images_dir: Path) -> dict[str, Path]:
     """Return a filename→path mapping, searching recursively."""
     return {p.name: p for p in images_dir.rglob("*.jpg")}
 
-# All adverse splits are drawn from the val set (test set has no public labels).
-CONDITION_FILTERS: dict[str, Callable[[dict], bool]] = {
-    "clear_day":         lambda a: a.get("weather") == "clear"         and a.get("timeofday") == "daytime",
-    "rainy_day":         lambda a: a.get("weather") == "rainy"         and a.get("timeofday") == "daytime",
-    "snowy_day":         lambda a: a.get("weather") == "snowy"         and a.get("timeofday") == "daytime",
-    "night_clear":       lambda a: a.get("timeofday") == "night"       and a.get("weather") == "clear",
-    "overcast_day":      lambda a: a.get("weather") == "overcast"      and a.get("timeofday") == "daytime",
-    "partly_cloudy_day": lambda a: a.get("weather") == "partly cloudy" and a.get("timeofday") == "daytime",
-    "dawn_dusk_clear":   lambda a: a.get("timeofday") == "dawn/dusk"   and a.get("weather") == "clear",
-}
+
+def discover_adverse_splits(
+    val_json: Path,
+    min_size: int = MIN_SPLIT_SIZE,
+) -> dict[str, Callable[[dict], bool]]:
+    """Scan the val JSON and return a filter for every (weather, timeofday) combo
+    that has at least ``min_size`` images, excluding the clear-day baseline and
+    entries with undefined attributes.
+
+    All adverse splits are drawn from the val set (test set has no public labels).
+    """
+    with open(val_json) as f:
+        entries: list[dict] = json.load(f)
+
+    counts: Counter = Counter()
+    for entry in entries:
+        a = entry.get("attributes", {})
+        w = a.get("weather", "undefined")
+        t = a.get("timeofday", "undefined")
+        if "undefined" in (w, t):
+            continue
+        if w == "clear" and t == "daytime":
+            continue
+        counts[(w, t)] += 1
+
+    return {
+        _split_name(w, t): _make_filter(w, t)
+        for (w, t), count in sorted(counts.items())
+        if count >= min_size
+    }
+
+
+def generate_dataset_yaml(
+    yolo_root: str,
+    adverse_conditions: list[str],
+    output_path: Path,
+) -> None:
+    """Write a YOLO dataset.yaml covering all splits."""
+    lines = [
+        f"path: {yolo_root}",
+        "",
+        "train: clear_day/train/images",
+        "val:   clear_day/val/images",
+        "",
+    ]
+    for cond in adverse_conditions:
+        lines.append(f"test_{cond}: {cond}/images")
+    lines += [
+        "",
+        f"nc: {len(CATEGORIES)}",
+        "",
+        "names:",
+    ]
+    for name in CLASS_NAMES:
+        lines.append(f"  {CATEGORIES[name]}: {name}")
+
+    output_path.write_text("\n".join(lines) + "\n")
 
 
 def _entry_to_yolo_lines(entry: dict) -> list[str]:
@@ -199,8 +255,16 @@ def convert_to_coco(
     with open(labels_json) as f:
         entries: list[dict] = json.load(f)
 
+    ann_path = dst_dir / "_annotations.coco.json"
+    if ann_path.exists():
+        existing = json.loads(ann_path.read_text())
+        coco["images"] = existing["images"]
+        coco["annotations"] = existing["annotations"]
+    img_id = len(coco["images"])
+    ann_id = len(coco["annotations"])
+
     img_index = _build_image_index(images_dir)
-    img_id = ann_id = count = 0
+    count = 0
     for entry in entries:
         if not filter_fn(entry.get("attributes", {})):
             continue
@@ -244,7 +308,7 @@ def convert_to_coco(
         img_id += 1
         count += 1
 
-    (dst_dir / "annotations.json").write_text(json.dumps(coco))
+    (dst_dir / "_annotations.coco.json").write_text(json.dumps(coco))
     return count
 
 
@@ -252,7 +316,8 @@ def create_splits(
     data_root: Path,
     yolo_output: Path | None = None,
     coco_output: Path | None = None,
-) -> None:
+    val_only_splits: frozenset[str] = frozenset({"clear_night"}),
+) -> list[str]:
     """Create all train/val/test splits in YOLO and/or COCO formats.
 
     Expects the standard BDD100K layout under ``data_root``::
@@ -264,44 +329,58 @@ def create_splits(
             bdd100k_labels_images_val.json
 
     The test set (``100k/test/``) has no public labels and is not used.
-    Adverse condition splits are drawn from the val set.
+    Adverse condition splits are discovered automatically from the val JSON —
+    every (weather, timeofday) combination with >= MIN_SPLIT_SIZE images is
+    included, excluding the clear-day baseline.
 
-    Splits produced:
-        clear_day/train    — clear+daytime from train JSON        (~12 400 images)
-        clear_day/val      — clear+daytime from val JSON          (~3 500 images)
-        rainy_day          — rainy + daytime from val             (~396 images)
-        snowy_day          — snowy + daytime from val             (~422 images)
-        night_clear        — night + clear weather from val       (~3 274 images)
-        overcast_day       — overcast + daytime from val          (~1 039 images)
-        partly_cloudy_day  — partly cloudy + daytime from val     (~638 images)
-        dawn_dusk_clear    — dawn/dusk + clear weather from val   (~307 images)
+    Splits listed in ``val_only_splits`` are built from the val JSON only.
+    All other adverse splits merge val + train (models only train on
+    clear+daytime, so non-clear_day train images are unseen at eval time).
 
     Args:
         data_root: Root of the raw BDD100K dataset directory.
         yolo_output: Destination for YOLO-format splits. Pass ``None`` to skip.
         coco_output: Destination for COCO-format splits. Pass ``None`` to skip.
+        val_only_splits: Adverse split names to build from val JSON only.
+
+    Returns:
+        List of discovered adverse condition split names.
     """
     train_json = data_root / "labels" / "bdd100k_labels_images_train.json"
     val_json   = data_root / "labels" / "bdd100k_labels_images_val.json"
     train_imgs = data_root / "100k" / "train"
     val_imgs   = data_root / "100k" / "val"
 
-    jobs: list[tuple[Path, Path, str, str]] = [
-        (train_json, train_imgs, "clear_day/train", "clear_day"),
-        (val_json,   val_imgs,   "clear_day/val",   "clear_day"),
-        (val_json,   val_imgs,   "rainy_day",         "rainy_day"),
-        (val_json,   val_imgs,   "snowy_day",         "snowy_day"),
-        (val_json,   val_imgs,   "night_clear",       "night_clear"),
-        (val_json,   val_imgs,   "overcast_day",      "overcast_day"),
-        (val_json,   val_imgs,   "partly_cloudy_day", "partly_cloudy_day"),
-        (val_json,   val_imgs,   "dawn_dusk_clear",   "dawn_dusk_clear"),
-    ]
+    clear_filter = _make_filter("clear", "daytime")
 
-    for lbl_json, img_dir, split_name, condition_key in jobs:
-        filter_fn = CONDITION_FILTERS[condition_key]
+    # clear_day train and val — COCO val is "valid/" per RF-DETR's expected format
+    for yolo_split, coco_split, lbl_json, img_dir in [
+        ("clear_day/train", "clear_day/train", train_json, train_imgs),
+        ("clear_day/val",   "clear_day/valid", val_json,   val_imgs),
+    ]:
         if yolo_output:
-            n = convert_to_yolo(lbl_json, img_dir, yolo_output / split_name, filter_fn)
-            print(f"[YOLO/{split_name}] {n} images")
+            n = convert_to_yolo(lbl_json, img_dir, yolo_output / yolo_split, clear_filter)
+            print(f"[YOLO/{yolo_split}] {n} images")
         if coco_output:
-            n = convert_to_coco(lbl_json, img_dir, coco_output / split_name, filter_fn)
-            print(f"[COCO/{split_name}] {n} images")
+            n = convert_to_coco(lbl_json, img_dir, coco_output / coco_split, clear_filter)
+            print(f"[COCO/{coco_split}] {n} images")
+
+    adverse_splits = discover_adverse_splits(val_json)
+    for split_name, filter_fn in adverse_splits.items():
+        sources = [(val_json, val_imgs)]
+        if split_name not in val_only_splits:
+            sources.append((train_json, train_imgs))
+        n_total = 0
+        for lbl_json, img_dir in sources:
+            if yolo_output:
+                n_total += convert_to_yolo(lbl_json, img_dir, yolo_output / split_name, filter_fn)
+        if yolo_output:
+            print(f"[YOLO/{split_name}] {n_total} images")
+        n_total = 0
+        for lbl_json, img_dir in sources:
+            if coco_output:
+                n_total += convert_to_coco(lbl_json, img_dir, coco_output / split_name, filter_fn)
+        if coco_output:
+            print(f"[COCO/{split_name}] {n_total} images")
+
+    return list(adverse_splits.keys())

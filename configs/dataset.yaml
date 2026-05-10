@@ -1,16 +1,20 @@
-path: /content/bdd100k_yolo
+path: /content/data_prepared/yolo
 
 train: clear_day/train/images
+val:   clear_day/val/images
 
-val: clear_day/val/images
-
-# Each test split isolates a single degradation variable
-test_rainy_day:         rainy_day/images
-test_snowy_day:         snowy_day/images
-test_night_clear:       night_clear/images
-test_overcast_day:      overcast_day/images
-test_partly_cloudy_day: partly_cloudy_day/images
-test_dawn_dusk_clear:   dawn_dusk_clear/images
+test_clear_dawn_dusk: clear_dawn_dusk/images
+test_clear_night: clear_night/images
+test_overcast_dawn_dusk: overcast_dawn_dusk/images
+test_overcast_daytime: overcast_daytime/images
+test_partly_cloudy_dawn_dusk: partly_cloudy_dawn_dusk/images
+test_partly_cloudy_daytime: partly_cloudy_daytime/images
+test_rainy_dawn_dusk: rainy_dawn_dusk/images
+test_rainy_daytime: rainy_daytime/images
+test_rainy_night: rainy_night/images
+test_snowy_dawn_dusk: snowy_dawn_dusk/images
+test_snowy_daytime: snowy_daytime/images
+test_snowy_night: snowy_night/images
 
 nc: 10
 

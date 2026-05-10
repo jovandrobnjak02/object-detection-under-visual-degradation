@@ -126,10 +126,10 @@ def build_comparison_df(
     """
     rows: list[dict] = []
     for model, cond_scores in scores.items():
-        clear_map50 = cond_scores.get("clear", {}).get("map50", float("nan"))
+        clear_map50 = cond_scores.get("clear_day", {}).get("map50", float("nan"))
         for condition, metrics in cond_scores.items():
             row = {"model": model, "condition": condition, **metrics}
-            if condition != "clear":
+            if condition != "clear_day":
                 rob = compute_robustness_metrics(clear_map50, metrics.get("map50", 0.0))
                 row.update(rob)
             rows.append(row)

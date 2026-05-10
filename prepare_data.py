@@ -1,35 +1,20 @@
-"""Run this script locally (Windows) before uploading to Google Drive.
+"""Run this script locally before uploading to Google Drive.
 
-Converts the raw BDD100K dataset into filtered YOLO and COCO splits,
-so only the ~18k images actually needed for training/evaluation are
-uploaded — instead of all 80k raw images.
+Converts the raw BDD100K dataset into filtered YOLO and COCO splits and
+auto-generates configs/dataset.yaml and configs/conditions.json from the
+discovered (weather, timeofday) combinations.
 
 Usage:
     python prepare_data.py
-
-Output (written next to this script):
-    data_prepared/
-      yolo/
-        clear_day/train/images/   clear_day/train/labels/   (~12 400 images)
-        clear_day/val/images/     clear_day/val/labels/     (~3 500 images)
-        rainy_day/images/         rainy_day/labels/         (~396 images)
-        snowy_day/images/         snowy_day/labels/         (~422 images)
-        night_clear/images/       night_clear/labels/       (~3 274 images)
-        overcast_day/images/      overcast_day/labels/      (~1 039 images)
-        partly_cloudy_day/images/ partly_cloudy_day/labels/ (~638 images)
-        dawn_dusk_clear/images/   dawn_dusk_clear/labels/   (~307 images)
-      coco/
-        (same split names as yolo/)
-
-Upload `data_prepared/` to Google Drive when done.
-On Colab, set BDD100K_ROOT to point at the mounted Drive path.
 """
 
+import json
 from pathlib import Path
-from src.data_utils import create_splits
+from src.data_utils import create_splits, generate_dataset_yaml
 
-DATA_ROOT = Path("data")           # raw BDD100K: data/100k/ and data/labels/
-OUT_ROOT  = Path("data_prepared")  # output written here
+DATA_ROOT   = Path("data")           # raw BDD100K: data/100k/ and data/labels/
+OUT_ROOT    = Path("data_prepared")  # output written here
+CONFIGS_DIR = Path("configs")
 
 if __name__ == "__main__":
     print("BDD100K data root:", DATA_ROOT.resolve())
@@ -42,11 +27,23 @@ if __name__ == "__main__":
             "Make sure the script is run from the project root."
         )
 
-    create_splits(
+    adverse_conditions = create_splits(
         data_root=DATA_ROOT,
         yolo_output=OUT_ROOT / "yolo",
         coco_output=OUT_ROOT / "coco",
     )
 
-    print("\nDone. Verify counts above, then upload data_prepared/ to Google Drive.")
-    print("Expected total: ~21 500 images across 8 splits.")
+    # Write dataset.yaml with all discovered test splits
+    generate_dataset_yaml(
+        yolo_root="/content/data_prepared/yolo",
+        adverse_conditions=adverse_conditions,
+        output_path=CONFIGS_DIR / "dataset.yaml",
+    )
+    print(f"\nWrote configs/dataset.yaml with {len(adverse_conditions)} adverse splits.")
+
+    # Write conditions.json so notebooks can load the split list without hardcoding
+    conditions = {"baseline": "clear_day", "adverse": adverse_conditions}
+    (CONFIGS_DIR / "conditions.json").write_text(json.dumps(conditions, indent=2))
+    print("Wrote configs/conditions.json.")
+
+    print("\nDone. Upload data_prepared/ and configs/ to Google Drive.")

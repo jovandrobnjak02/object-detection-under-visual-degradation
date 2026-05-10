@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Sequence
 
 import matplotlib.pyplot as plt
 import matplotlib.ticker as mticker
@@ -17,52 +16,64 @@ MODEL_COLORS: dict[str, str] = {
     "rtdetr":  "#55A868",
     "rfdetr":  "#C44E52",
 }
-CONDITIONS = [
-    "clear_day", "rainy_day", "snowy_day", "night_clear",
-    "overcast_day", "partly_cloudy_day", "dawn_dusk_clear",
-]
-CONDITION_LABELS = {
-    "clear_day":         "Clear Day",
-    "rainy_day":         "Rain (day)",
-    "snowy_day":         "Snow (day)",
-    "night_clear":       "Night (clear)",
-    "overcast_day":      "Overcast (day)",
-    "partly_cloudy_day": "Partly Cloudy (day)",
-    "dawn_dusk_clear":   "Dawn/Dusk (clear)",
+CONDITION_LABELS: dict[str, str] = {
+    "clear_day":              "Clear Day",
+    "clear_dawn_dusk":        "Clear Dawn/Dusk",
+    "clear_night":            "Clear Night",
+    "overcast_dawn_dusk":     "Overcast Dawn/Dusk",
+    "overcast_daytime":       "Overcast Day",
+    "partly_cloudy_dawn_dusk": "Partly Cloudy Dawn/Dusk",
+    "partly_cloudy_daytime":  "Partly Cloudy Day",
+    "rainy_dawn_dusk":        "Rain Dawn/Dusk",
+    "rainy_daytime":          "Rain Day",
+    "rainy_night":            "Rain Night",
+    "snowy_dawn_dusk":        "Snow Dawn/Dusk",
+    "snowy_daytime":          "Snow Day",
+    "snowy_night":            "Snow Night",
 }
+_ADVERSE_DEFAULT = [k for k in CONDITION_LABELS if k != "clear_day"]
 
 
 def plot_map_comparison(
     df: pd.DataFrame,
     metric: str = "map50",
+    conditions: list[str] | None = None,
     output_path: Path | None = None,
 ) -> plt.Figure:
-    """Bar chart comparing mAP across all 4 models and 3 conditions.
+    """Bar chart comparing mAP across all models and conditions.
 
     Args:
         df: DataFrame from :func:`~src.eval_utils.build_comparison_df`.
         metric: Column name to plot (``"map50"`` or ``"map50_95"``).
+        conditions: Ordered list of condition keys to plot. Defaults to all
+                    conditions present in ``df``.
         output_path: If provided, saves the figure to this path.
 
     Returns:
         Matplotlib Figure.
     """
+    if conditions is None:
+        conditions = [c for c in (["clear_day"] + _ADVERSE_DEFAULT) if c in df["condition"].values]
     models = df["model"].unique().tolist()
-    x = np.arange(len(CONDITIONS))
-    width = 0.2
+    x = np.arange(len(conditions))
+    width = 0.8 / len(models)
     offsets = np.linspace(-(len(models) - 1) / 2, (len(models) - 1) / 2, len(models)) * width
 
-    fig, ax = plt.subplots(figsize=(10, 5))
+    fig_w = max(10, len(conditions) * 1.2)
+    fig, ax = plt.subplots(figsize=(fig_w, 5))
     for offset, model in zip(offsets, models):
         vals = [
             df.loc[(df["model"] == model) & (df["condition"] == c), metric].values
-            for c in CONDITIONS
+            for c in conditions
         ]
         heights = [v[0] if len(v) else 0.0 for v in vals]
         ax.bar(x + offset, heights, width, label=model, color=MODEL_COLORS.get(model))
 
     ax.set_xticks(x)
-    ax.set_xticklabels([CONDITION_LABELS[c] for c in CONDITIONS])
+    ax.set_xticklabels(
+        [CONDITION_LABELS.get(c, c) for c in conditions],
+        rotation=30, ha="right",
+    )
     ax.set_ylabel(metric.upper())
     ax.set_title(f"{metric.upper()} by Model and Condition")
     ax.yaxis.set_major_formatter(mticker.FormatStrFormatter("%.2f"))
@@ -77,6 +88,7 @@ def plot_map_comparison(
 def plot_degradation_curves(
     df: pd.DataFrame,
     metric: str = "retention_pct",
+    adverse_conditions: list[str] | None = None,
     output_path: Path | None = None,
 ) -> plt.Figure:
     """Line chart showing mAP retention (%) from clear to adverse conditions.
@@ -84,13 +96,17 @@ def plot_degradation_curves(
     Args:
         df: DataFrame from :func:`~src.eval_utils.build_comparison_df`.
         metric: Column to plot on the y-axis (default: ``"retention_pct"``).
+        adverse_conditions: Condition keys to include (excluding clear_day).
+                            Defaults to all adverse conditions present in ``df``.
         output_path: If provided, saves the figure to this path.
 
     Returns:
         Matplotlib Figure.
     """
-    adverse_conditions = ["rainy_day", "snowy_day", "night_clear", "overcast_day", "partly_cloudy_day", "dawn_dusk_clear"]
-    fig, ax = plt.subplots(figsize=(8, 5))
+    if adverse_conditions is None:
+        adverse_conditions = [c for c in _ADVERSE_DEFAULT if c in df["condition"].values]
+    fig_w = max(8, len(adverse_conditions) * 1.0)
+    fig, ax = plt.subplots(figsize=(fig_w, 5))
 
     for model in df["model"].unique():
         sub = df[df["model"] == model]
@@ -100,7 +116,7 @@ def plot_degradation_curves(
         ]
         heights = [y[0] if len(y) else np.nan for y in ys]
         ax.plot(
-            [CONDITION_LABELS[c] for c in adverse_conditions],
+            [CONDITION_LABELS.get(c, c) for c in adverse_conditions],
             heights,
             marker="o",
             label=model,
@@ -111,6 +127,7 @@ def plot_degradation_curves(
     ax.set_ylabel("mAP Retention (%)")
     ax.set_title("Robustness: mAP Retention vs. Clear Baseline")
     ax.legend(title="Model")
+    plt.xticks(rotation=30, ha="right")
     fig.tight_layout()
 
     if output_path:

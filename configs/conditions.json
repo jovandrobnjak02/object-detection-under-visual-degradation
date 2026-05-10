@@ -1,0 +1,17 @@
+{
+  "baseline": "clear_day",
+  "adverse": [
+    "clear_dawn_dusk",
+    "clear_night",
+    "overcast_dawn_dusk",
+    "overcast_daytime",
+    "partly_cloudy_dawn_dusk",
+    "partly_cloudy_daytime",
+    "rainy_dawn_dusk",
+    "rainy_daytime",
+    "rainy_night",
+    "snowy_dawn_dusk",
+    "snowy_daytime",
+    "snowy_night"
+  ]
+}
