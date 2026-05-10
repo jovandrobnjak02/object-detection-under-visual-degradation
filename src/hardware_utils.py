@@ -66,6 +66,8 @@ def count_flops_and_params(
         raise ImportError("Install fvcore: pip install fvcore") from e
 
     model.eval()
+    device = next(model.parameters()).device
+    input_tensor = input_tensor.to(device)
     flops = FlopCountAnalysis(model, input_tensor)
     flops.unsupported_ops_warnings(False)
     flops.uncalled_modules_warnings(False)
@@ -130,3 +132,75 @@ def measure_inference_speed(
     ms_per_frame = elapsed_ms / n_frames
     fps = 1000.0 / ms_per_frame
     return {"ms_per_frame": round(ms_per_frame, 3), "fps": round(fps, 2)}
+
+
+def measure_rfdetr_hardware(
+    model,
+    device: torch.device | str = "cuda",
+    resolution: int = 576,
+    n_warmup: int = 10,
+    n_frames: int = 100,
+) -> dict[str, float]:
+    """Measure VRAM and inference speed for RF-DETR using a dummy PIL image.
+
+    RF-DETR's predict() takes PIL images rather than tensors, so the standard
+    measure_vram / measure_inference_speed helpers cannot be used directly.
+
+    Args:
+        model: RFDETRMedium instance.
+        device: CUDA device for VRAM tracking.
+        resolution: Input resolution (must match training, default 576).
+        n_warmup: Warmup calls before measurement.
+        n_frames: Number of timed calls to average over.
+
+    Returns:
+        Dict with ``"peak_vram_mb"``, ``"peak_vram_gb"``,
+        ``"ms_per_frame"``, and ``"fps"``.
+    """
+    import numpy as np
+    from PIL import Image
+
+    dummy_img = Image.fromarray(np.zeros((resolution, resolution, 3), dtype=np.uint8))
+    use_cuda = str(device) != "cpu" and torch.cuda.is_available()
+
+    try:
+        inner = getattr(model, "model", model)
+        params_m = round(sum(p.numel() for p in inner.parameters() if p.requires_grad) / 1e6, 3)
+    except Exception:
+        params_m = float("nan")
+
+    for _ in range(n_warmup):
+        model.predict(dummy_img, threshold=0.5)
+    if use_cuda:
+        torch.cuda.synchronize(device)
+
+    torch.cuda.reset_peak_memory_stats(device)
+    model.predict(dummy_img, threshold=0.5)
+    if use_cuda:
+        torch.cuda.synchronize(device)
+    peak_mb = torch.cuda.max_memory_allocated(device) / 1024 ** 2
+
+    if use_cuda:
+        starter = torch.cuda.Event(enable_timing=True)
+        ender = torch.cuda.Event(enable_timing=True)
+        starter.record()
+        for _ in range(n_frames):
+            model.predict(dummy_img, threshold=0.5)
+        ender.record()
+        torch.cuda.synchronize(device)
+        elapsed_ms = starter.elapsed_time(ender)
+    else:
+        t0 = time.perf_counter()
+        for _ in range(n_frames):
+            model.predict(dummy_img, threshold=0.5)
+        elapsed_ms = (time.perf_counter() - t0) * 1000
+
+    ms = elapsed_ms / n_frames
+    return {
+        "peak_vram_mb": round(peak_mb, 2),
+        "peak_vram_gb": round(peak_mb / 1024, 4),
+        "gflops": float("nan"),  # PIL-based forward; use count_flops_and_params for tensor models
+        "params_m": params_m,
+        "ms_per_frame": round(ms, 3),
+        "fps": round(1000.0 / ms, 2),
+    }
